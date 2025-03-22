@@ -19,7 +19,7 @@ class ClusterTools(OpenSearchClient):
                 return [TextContent(type="text", text=str(response))]
             except Exception as e:
                 self.logger.error(f"Error getting cluster health: {e}")
-                return [TextContent(type="text", text=f"Error: {str(e)}")]
+                return [TextContent(type="text", text=f"Error getting cluster health: {str(e)}")]
 
         @mcp.tool(description="Get cluster statistics")
         async def get_cluster_stats() -> list[TextContent]:
@@ -34,4 +34,4 @@ class ClusterTools(OpenSearchClient):
                 return [TextContent(type="text", text=str(response))]
             except Exception as e:
                 self.logger.error(f"Error getting cluster stats: {e}")
-                return [TextContent(type="text", text=f"Error: {str(e)}")] 
+                return [TextContent(type="text", text=f"Error getting cluster stats: {str(e)}")]

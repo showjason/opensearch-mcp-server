@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import argparse
 from fastmcp import FastMCP
 from .tools.index import IndexTools
 from .tools.cluster import ClusterTools
@@ -29,10 +30,27 @@ class OpenSearchMCPServer:
         index_tools.register_tools(self.mcp)
         cluster_tools.register_tools(self.mcp)
 
-    def run(self):
-        """Run the MCP server."""
-        self.mcp.run()
+    def run(self, port=None, transport="stdio"):
+        """Run the MCP server.
+        
+        Args:
+            port: Optional port number, if specified it will override the default port
+            transport: Transport protocol, either "stdio" or "sse"
+        """
+        if port is not None:
+            self.mcp.settings.port = port
+            self.logger.info(f"OpenSearch MCP service will start on port {port}")
+            
+        self.mcp.run(transport=transport)
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='OpenSearch MCP Server')
+    parser.add_argument('--port', type=int, help='Service listening port (default: 8000)')
+    parser.add_argument('--transport', default="stdio", choices=["stdio", "sse"], 
+                        help='Transport protocol (default: stdio)')
+    args = parser.parse_args()
+    
+    # Create and run the server
     server = OpenSearchMCPServer()
-    server.run() 
+    server.run(port=args.port, transport=args.transport) 

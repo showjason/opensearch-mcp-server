@@ -29,6 +29,9 @@ class OpenSearchClient:
     def _create_opensearch_client(self) -> OpenSearch:
         """Create and return an OpenSearch client using configuration from environment."""
         config = self._get_os_config()
+        print(config["host"])
+        print(config["username"])
+        print(config["password"])
 
         # Disable SSL warnings
         warnings.filterwarnings("ignore", message=".*SSL.*",)
