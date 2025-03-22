@@ -24,7 +24,8 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install the package
-pip install -e .
+pip install uv
+uv pip install -e .
 ```
 
 ## Configuration
@@ -51,7 +52,7 @@ uv run opensearch-mcp-server --transport=sse --port=8004
 
 ```bash
 # Install dependencies
-uv pip install
+uv pip install -e .
 
 # Run tests
 uv run pytest -vv -s test_opensearch.py
