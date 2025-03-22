@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from opensearchpy import OpenSearch
 import warnings
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -14,8 +14,8 @@ logging.basicConfig(
 logger = logging.getLogger("opensearch-test")
 
 def get_os_config():
-    """从环境变量获取OpenSearch配置"""
-    # 加载.env文件中的环境变量
+    """Get OpenSearch configuration from environment variables"""
+    # Load environment variables from .env file
     load_dotenv()
     config = {
         "host": os.getenv("OPENSEARCH_HOST", "https://localhost:9200"),
@@ -24,19 +24,19 @@ def get_os_config():
     }
     
     if not all([config["username"], config["password"]]):
-        logger.error("缺少必要的OpenSearch配置。请检查环境变量：")
-        logger.error("OPENSEARCH_USERNAME和OPENSEARCH_PASSWORD是必需的")
-        raise ValueError("缺少必要的OpenSearch配置")
+        logger.error("Missing required OpenSearch configuration. Please check environment variables:")
+        logger.error("OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD are required")
+        raise ValueError("Missing required OpenSearch configuration")
     
     return config
 
 @pytest.fixture
 def client():
-    """创建并返回一个OpenSearch客户端"""
+    """Create and return an OpenSearch client"""
     config = get_os_config()
-    logger.info(f"使用以下配置连接OpenSearch: {config['host']}")
+    logger.info(f"Connecting to OpenSearch with configuration: {config['host']}")
 
-    # 禁用SSL警告
+    # Disable SSL warnings
     warnings.filterwarnings("ignore", message=".*SSL.*")
 
     return OpenSearch(
@@ -48,69 +48,69 @@ def client():
 
 @pytest.mark.asyncio
 async def test_list_indices(client):
-    """测试列出所有索引"""
-    logger.info("测试 list_indices...")
+    """Test listing all indices"""
+    logger.info("Testing list_indices...")
     try:
         indices = client.cat.indices(format="json")
-        logger.info(f"索引列表: {indices}")
+        logger.info(f"Indices list: {indices}")
         assert True
     except Exception as e:
-        logger.error(f"列出索引时出错: {e}")
+        logger.error(f"Error listing indices: {e}")
         assert False
 
 @pytest.mark.asyncio
 async def test_get_cluster_health(client):
-    """测试获取集群健康状态"""
-    logger.info("测试 get_cluster_health...")
+    """Test getting cluster health status"""
+    logger.info("Testing get_cluster_health...")
     try:
         response = client.cluster.health()
-        logger.info(f"集群健康状态: {response}")
+        logger.info(f"Cluster health status: {response}")
         assert True
     except Exception as e:
-        logger.error(f"获取集群健康状态时出错: {e}")
+        logger.error(f"Error getting cluster health: {e}")
         assert False
 
 @pytest.mark.asyncio
 async def test_get_cluster_stats(client):
-    """测试获取集群统计信息"""
-    logger.info("测试 get_cluster_stats...")
+    """Test getting cluster statistics"""
+    logger.info("Testing get_cluster_stats...")
     try:
         response = client.cluster.stats()
-        logger.info(f"集群统计信息: {response}")
+        logger.info(f"Cluster statistics: {response}")
         assert True
     except Exception as e:
-        logger.error(f"获取集群统计信息时出错: {e}")
+        logger.error(f"Error getting cluster statistics: {e}")
         assert False
 
 async def run_tests():
-    """运行所有测试"""
+    """Run all tests"""
     try:
-        # 创建OpenSearch客户端
+        # Create OpenSearch client
         client = create_opensearch_client()
         
-        # 运行所有测试
+        # Run all tests
         results = []
         results.append(await test_list_indices(client))
         results.append(await test_get_cluster_health(client))
         results.append(await test_get_cluster_stats(client))
         
-        # 输出测试结果摘要
+        # Output test results summary
         tests = ["list_indices", "get_cluster_health", "get_cluster_stats"]
-        logger.info("测试结果摘要:")
+        logger.info("Test results summary:")
         for i, test in enumerate(tests):
-            status = "成功" if results[i] else "失败"
+            status = "Success" if results[i] else "Failed"
             logger.info(f"{test}: {status}")
         
-        # 检查SSL配置
+        # Check SSL configuration
         if not any(results):
-            logger.warning("所有测试都失败。如果看到SSL错误，可能需要检查以下几点:")
-            logger.warning("1. 确保OpenSearch服务器正在运行")
-            logger.warning("2. 检查.env文件中的OPENSEARCH_HOST配置是否正确")
-            logger.warning("3. 如果服务器不需要SSL，尝试将URL从https://改为http://")
+            logger.warning("All tests failed. If you see SSL errors, you may need to check the following:")
+            logger.warning("1. Ensure OpenSearch server is running")
+            logger.warning("2. Check OPENSEARCH_HOST configuration in .env file")
+            logger.warning("3. If server doesn't require SSL, try changing URL from https:// to http://")
             
     except Exception as e:
-        logger.error(f"运行测试时出错: {e}")
+        logger.error(f"Error running tests: {e}")
 
 if __name__ == "__main__":
-    # 运行测试
+    # Run tests
     asyncio.run(run_tests()) 

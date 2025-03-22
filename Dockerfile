@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -15,4 +15,5 @@ COPY src/ ./src/
 ENV PYTHONUNBUFFERED=1
 
 # Run the server
-CMD ["opensearch-mcp-server"] 
+# Default port is 8000
+CMD ["uv run opensearch-mcp-server --transport=sse"] 

@@ -33,8 +33,8 @@ Create a `.env` file in the root directory with the following variables:
 
 ```
 OPENSEARCH_HOST=https://localhost:9200
-OPENSEARCH_USERNAME=admin
-OPENSEARCH_PASSWORD=admin
+OPENSEARCH_USERNAME=xxxx
+OPENSEARCH_PASSWORD=xxxx
 ```
 
 Adjust the values to match your OpenSearch configuration.
@@ -44,17 +44,17 @@ Adjust the values to match your OpenSearch configuration.
 Run the MCP server:
 
 ```bash
-opensearch-mcp-server
+uv run opensearch-mcp-server --transport=sse --port=8004
 ```
 
 ## Development
 
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
+# Install dependencies
+uv pip install
 
 # Run tests
-pytest
+uv run pytest -vv -s test_opensearch.py
 ```
 
 ## License

@@ -53,4 +53,4 @@ def main():
     
     # Create and run the server
     server = OpenSearchMCPServer()
-    server.run(port=args.port, transport=args.transport) 
+    server.run(port=args.port, transport=args.transport)

@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """
-OpenSearch 直接测试脚本
-用于验证与OpenSearch的连接并获取索引和集群信息
+OpenSearch Direct Test Script
+Used to verify connection to OpenSearch and retrieve index and cluster information
 """
 
 import os
@@ -12,22 +11,22 @@ from dotenv import load_dotenv
 from opensearchpy import OpenSearch
 import warnings
 
-# 禁用SSL警告
+# Disable SSL warnings
 warnings.filterwarnings("ignore", message=".*SSL.*")
 
 def get_opensearch_config():
-    """从环境变量获取OpenSearch配置"""
-    # 加载.env文件中的环境变量
+    """Get OpenSearch configuration from environment variables"""
+    # Load environment variables from .env file
     load_dotenv()
     
     host = os.getenv("OPENSEARCH_HOST", "https://localhost:9200")
     username = os.getenv("OPENSEARCH_USERNAME")
     password = os.getenv("OPENSEARCH_PASSWORD")
     
-    # 验证必要的配置
+    # Validate required configuration
     if not username or not password:
-        print("错误: 缺少必要的OpenSearch配置")
-        print("请确保环境变量中设置了OPENSEARCH_USERNAME和OPENSEARCH_PASSWORD")
+        print("Error: Missing required OpenSearch configuration")
+        print("Please ensure OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD are set in environment variables")
         sys.exit(1)
     
     return {
@@ -37,8 +36,8 @@ def get_opensearch_config():
     }
 
 def create_client(config):
-    """创建OpenSearch客户端"""
-    print(f"连接到OpenSearch服务器: {config['host']}")
+    """Create OpenSearch client"""
+    print(f"Connecting to OpenSearch server: {config['host']}")
     
     return OpenSearch(
         hosts=[config['host']],
@@ -48,40 +47,40 @@ def create_client(config):
     )
 
 def pretty_print_json(data):
-    """格式化打印JSON数据"""
+    """Format and print JSON data"""
     if isinstance(data, str):
         try:
-            # 尝试解析JSON字符串
+            # Try to parse JSON string
             parsed = json.loads(data)
             return json.dumps(parsed, indent=2, ensure_ascii=False)
         except:
-            # 如果不是有效的JSON，直接返回
+            # If not valid JSON, return as is
             return data
     else:
-        # 如果是字典或列表，直接格式化
+        # If it's a dictionary or list, format directly
         return json.dumps(data, indent=2, ensure_ascii=False)
 
 def test_opensearch():
-    """执行OpenSearch测试"""
+    """Execute OpenSearch tests"""
     try:
-        # 获取配置并创建客户端
+        # Get configuration and create client
         config = get_opensearch_config()
         client = create_client(config)
         
-        # 测试1: 集群健康状态
-        print("\n===== 集群健康状态 =====")
+        # Test 1: Cluster health status
+        print("\n===== Cluster Health Status =====")
         try:
             health = client.cluster.health()
             print(pretty_print_json(health))
-            print("集群健康状态检查: 成功 ✓")
+            print("Cluster health status check: Success ✓")
         except Exception as e:
-            print(f"集群健康状态检查: 失败 ✗ - {e}")
+            print(f"Cluster health status check: Failed ✗ - {e}")
         
-        # 测试2: 集群统计信息
-        print("\n===== 集群统计信息 =====")
+        # Test 2: Cluster statistics
+        print("\n===== Cluster Statistics =====")
         try:
             stats = client.cluster.stats()
-            # 只打印部分关键信息，否则太多
+            # Only print key information, otherwise too much
             if isinstance(stats, dict):
                 summary = {
                     "cluster_name": stats.get("cluster_name"),
@@ -93,32 +92,32 @@ def test_opensearch():
                 print(pretty_print_json(summary))
             else:
                 print(pretty_print_json(stats))
-            print("集群统计信息检查: 成功 ✓")
+            print("Cluster statistics check: Success ✓")
         except Exception as e:
-            print(f"集群统计信息检查: 失败 ✗ - {e}")
+            print(f"Cluster statistics check: Failed ✗ - {e}")
         
-        # 测试3: 索引列表
-        print("\n===== 索引列表 =====")
+        # Test 3: Index list
+        print("\n===== Index List =====")
         try:
             indices = client.cat.indices(format="json")
             print(pretty_print_json(indices))
-            print("索引列表检查: 成功 ✓")
+            print("Index list check: Success ✓")
         except Exception as e:
-            print(f"索引列表检查: 失败 ✗ - {e}")
+            print(f"Index list check: Failed ✗ - {e}")
             
-        # 连接测试总结
-        print("\n===== 测试总结 =====")
-        print("OpenSearch服务器: " + config['host'])
-        print("连接状态: 已成功连接到OpenSearch服务器")
+        # Connection test summary
+        print("\n===== Test Summary =====")
+        print("OpenSearch server: " + config['host'])
+        print("Connection status: Successfully connected to OpenSearch server")
         
     except Exception as e:
-        print("\n===== 测试失败 =====")
-        print(f"无法连接到OpenSearch服务器: {e}")
-        print("\n可能的解决方案:")
-        print("1. 确保OpenSearch服务器正在运行")
-        print("2. 检查.env文件中的连接配置是否正确")
-        print("3. 如果服务器不需要SSL，尝试将URL从https://改为http://")
-        print("4. 验证用户名和密码是否正确")
+        print("\n===== Test Failed =====")
+        print(f"Unable to connect to OpenSearch server: {e}")
+        print("\nPossible solutions:")
+        print("1. Ensure OpenSearch server is running")
+        print("2. Check connection configuration in .env file is correct")
+        print("3. If server doesn't require SSL, try changing URL from https:// to http://")
+        print("4. Verify username and password are correct")
 
 if __name__ == "__main__":
     test_opensearch() 
