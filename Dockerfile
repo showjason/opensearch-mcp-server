@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -13,7 +13,15 @@ COPY src/ ./src/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+# OpenSearch connection parameters
+ENV OPENSEARCH_HOST="https://localhost:9200"
+ENV OPENSEARCH_USERNAME="admin"
+ENV OPENSEARCH_PASSWORD="admin"
+# These can be overridden at runtime with docker run --env
+
+# Expose the port the server is running on
+EXPOSE 8000
 
 # Run the server
 # Default port is 8000
-CMD ["uv run opensearch-mcp-server --transport=sse"] 
+CMD ["opensearch-mcp-server"]

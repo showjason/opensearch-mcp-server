@@ -5,10 +5,11 @@ from opensearchpy import OpenSearch
 import warnings
 
 class OpenSearchClient:
-    def __init__(self, logger: logging.Logger):
+    
+    def __init__(self, logger=None):         
         self.logger = logger
         self.os_client = self._create_opensearch_client()
-
+        
     def _get_os_config(self):
         """Get OpenSearch configuration from environment variables."""
         # Load environment variables from .env file
@@ -29,9 +30,6 @@ class OpenSearchClient:
     def _create_opensearch_client(self) -> OpenSearch:
         """Create and return an OpenSearch client using configuration from environment."""
         config = self._get_os_config()
-        print(config["host"])
-        print(config["username"])
-        print(config["password"])
 
         # Disable SSL warnings
         warnings.filterwarnings("ignore", message=".*SSL.*",)

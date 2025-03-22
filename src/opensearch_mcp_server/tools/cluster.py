@@ -1,9 +1,19 @@
 import logging
 from typing import Dict, Any
-from ..opensearch_client import OpenSearchClient
 from mcp.types import TextContent
 
-class ClusterTools(OpenSearchClient):
+class ClusterTools:
+    def __init__(self, logger=None, os_client=None):
+        """
+        Initialize ClusterTools with logger and OpenSearch client.
+        
+        Args:
+            logger: Logger instance
+            os_client: OpenSearch client instance
+        """
+        self.logger = logger or logging.getLogger(__name__)
+        self.os_client = os_client
+        
     def register_tools(self, mcp: Any):
         """Register cluster-related tools."""
         
