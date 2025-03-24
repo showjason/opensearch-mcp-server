@@ -50,6 +50,20 @@ Run the MCP server:
 uv run opensearch-mcp-server --transport=sse --port=8004
 ```
 
+## Usage with Desktop App
+
+To integrate this server with a desktop app, add the following to your app's server configuration:
+
+```
+{
+  "mcpServers": {
+    "opensearch": {
+      "url": "http://<host>:<port>>/sse"
+    }
+  }
+}
+```
+
 ## Development
 
 ```bash
