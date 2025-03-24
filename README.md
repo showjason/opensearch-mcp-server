@@ -47,7 +47,7 @@ Adjust the values to match your OpenSearch configuration.
 Run the MCP server:
 
 ```bash
-uv run opensearch-mcp-server --transport=sse --port=8004
+uv run opensearch-mcp-server --transport=sse --port=<port>
 ```
 
 ## Usage with Desktop App
