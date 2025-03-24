@@ -11,6 +11,8 @@ MCP (Machine Coding Protocol) server for OpenSearch integration.
 - Cluster Management Tools:
   - Get cluster health status
   - Get cluster statistics
+- Document Tools:
+  - Search documents
 
 ## Installation
 

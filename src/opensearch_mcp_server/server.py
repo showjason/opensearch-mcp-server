@@ -4,6 +4,7 @@ import argparse
 from fastmcp import FastMCP
 from .tools.index import IndexTools
 from .tools.cluster import ClusterTools
+from .tools.document import DocumentTools
 from .opensearch_client import OpenSearchClient
 
 class OpenSearchMCPServer:
@@ -29,11 +30,13 @@ class OpenSearchMCPServer:
         # Initialize tool classes with shared OpenSearch client
         index_tools = IndexTools(self.logger, self.os_client)
         cluster_tools = ClusterTools(self.logger, self.os_client)
+        document_tools = DocumentTools(self.logger, self.os_client)
         
         # Register tools from each module
         index_tools.register_tools(self.mcp)
         cluster_tools.register_tools(self.mcp)
-
+        document_tools.register_tools(self.mcp)
+        
     def run(self, port=None):
         """Run the MCP server with SSE transport.
         
