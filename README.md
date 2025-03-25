@@ -1,6 +1,6 @@
 # OpenSearch MCP Server
 
-MCP (Machine Coding Protocol) server for OpenSearch integration which is inspired by **[elasticsearch-mcp-server](https://github.com/cr7258/elasticsearch-mcp-server)**.
+MCP (Model Context Protocol) server for OpenSearch integration which is inspired by **[elasticsearch-mcp-server](https://github.com/cr7258/elasticsearch-mcp-server)**.
 
 ## Features
 
