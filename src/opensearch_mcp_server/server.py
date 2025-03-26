@@ -37,24 +37,28 @@ class OpenSearchMCPServer:
         cluster_tools.register_tools(self.mcp)
         document_tools.register_tools(self.mcp)
         
-    def run(self, port=None):
-        """Run the MCP server with SSE transport.
+    def run(self, port=None, transport="sse"):
+        """Run the MCP server.
         
         Args:
             port: Optional port number, if specified it will override the default port
+            transport: Transport protocol, either "stdio" or "sse" (default: "sse")
         """
         if port is not None:
             self.mcp.settings.port = port
             self.logger.info(f"OpenSearch MCP service will start on port {port}")
             
-        self.mcp.run(transport="sse")
+        self.logger.info(f"Using transport protocol: {transport}")
+        self.mcp.run(transport=transport)
 
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='OpenSearch MCP Server')
     parser.add_argument('--port', type=int, help='Service listening port (default: 8000)')
+    parser.add_argument('--transport', default="sse", choices=["stdio", "sse"], 
+                      help='Transport protocol (default: sse)')
     args = parser.parse_args()
     
     # Create and run the server
     server = OpenSearchMCPServer()
-    server.run(port=args.port)
+    server.run(port=args.port, transport=args.transport)
