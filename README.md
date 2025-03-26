@@ -47,7 +47,7 @@ Adjust the values to match your OpenSearch configuration.
 ### Run the MCP server:
 
 ```bash
-uv run opensearch-mcp-server --transport=sse --port=<port>
+uv run opensearch-mcp-server --port=<port>
 ```
 ### Integrate with Cursor
 ```
