@@ -1,6 +1,6 @@
 # OpenSearch MCP Server
 
-MCP (Machine Coding Protocol) server for OpenSearch integration which is inspired by **[elasticsearch-mcp-server](https://github.com/cr7258/elasticsearch-mcp-server)**.
+MCP (Model Context Protocol) server for OpenSearch integration which is inspired by **[elasticsearch-mcp-server](https://github.com/cr7258/elasticsearch-mcp-server)**.
 
 ## Features
 
@@ -42,23 +42,35 @@ OPENSEARCH_PASSWORD=xxxx
 
 Adjust the values to match your OpenSearch configuration.
 
-## Usage
+## Usage with Cursor
 
-Run the MCP server:
+### Run the MCP server:
 
 ```bash
 uv run opensearch-mcp-server --transport=sse --port=<port>
 ```
-
-## Usage with Desktop App
-
-To integrate this server with a desktop app, add the following to your app's server configuration:
-
+### Integrate with Cursor
 ```
 {
   "mcpServers": {
     "opensearch": {
       "url": "http://<host>:<port>>/sse"
+    }
+  }
+}
+```
+## Usage with Claude Desktop APP
+```
+{
+  "mcpServers": {
+    "opensearch": {
+      "command": "uv",
+      "args": [
+          "--directory",
+          "/absolute/path/to/opensearch-mcp-server",
+          "run",
+          "opensearch-mcp-server"
+      ]
     }
   }
 }
