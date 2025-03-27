@@ -4,9 +4,10 @@ WORKDIR /app
 
 # Install dependencies
 COPY pyproject.toml uv.lock* ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install uv && \
-    uv pip install -e .
+# 分开执行各个命令以避免 /bin/sh -c 问题
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install uv
+RUN uv pip install -e .
 
 # Copy source code
 COPY src/ ./src/
