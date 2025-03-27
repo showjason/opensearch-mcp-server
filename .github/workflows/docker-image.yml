@@ -18,8 +18,8 @@ jobs:
       uses: docker/login-action@v3
       with:
         registry: registry.cn-hangzhou.aliyuncs.com
-        username: ${{ AliYUN.USERNAME }}
-        password: ${{ AliYUN.PASSWORD }}
+        username: ${{ secrets.ALIYUN_USERNAME }}
+        password: ${{ secrets.ALIYUN_PASSWORD }}
         
     - name: Build and push Docker image
       run: |
