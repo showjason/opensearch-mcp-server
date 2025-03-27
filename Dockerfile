@@ -3,12 +3,8 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Install dependencies
-COPY pyproject.toml uv.lock* ./
-# 分开执行各个命令以避免 /bin/sh -c 问题
+COPY . .
 RUN pip install --no-cache-dir --upgrade pip && pip install -e .
-
-# Copy source code
-COPY src/ ./src/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
