@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import logging
 import argparse
-# import asyncio
 from fastmcp import FastMCP
 from .tools.index import IndexTools
 from .tools.cluster import ClusterTools
