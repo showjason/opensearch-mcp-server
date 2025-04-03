@@ -9,52 +9,52 @@ from .tools.document import DocumentTools
 from .opensearch_client import OpenSearchClient
 
 class CustomFastMCP(FastMCP):
-    """自定义FastMCP修复SSE问题"""
+    """Custom FastMCP to fix SSE issues"""
     
     def __init__(self, name, logger=None, **kwargs):
         super().__init__(name, **kwargs)
         self.logger = logger or logging.getLogger(name)
     
     async def run_sse_async(self) -> None:
-        """修复的SSE运行方法，直接重写创建Starlette应用的过程"""
+        """Fixed SSE run method, directly rewrites the process of creating Starlette application"""
         from starlette.applications import Starlette
         from starlette.routing import Mount, Route
         from starlette.responses import Response
         from mcp.server.sse import SseServerTransport
         import uvicorn
 
-        self.logger.info("通过自定义方法初始化SSE服务")
+        self.logger.info("Initializing SSE service using custom method")
         sse = SseServerTransport("/messages/")
 
-        # 创建SSE处理函数
+        # Create SSE handler function
         async def handle_sse(request):
-            self.logger.info(f"接收到SSE连接请求: {request}")
+            self.logger.info(f"Received SSE connection request: {request}")
             try:
                 async with sse.connect_sse(
                     request.scope, request.receive, request._send
                 ) as streams:
-                    self.logger.info("SSE连接已建立")
+                    self.logger.info("SSE connection established")
                     await self._mcp_server.run(
                         streams[0],
                         streams[1],
                         self._mcp_server.create_initialization_options(),
                     )
             except Exception as e:
-                self.logger.error(f"SSE处理错误: {e}", exc_info=True)
+                self.logger.error(f"SSE handling error: {e}", exc_info=True)
                 raise
 
-        # 创建安全的POST消息处理函数
+        # Create secure POST message handler function
         async def safe_handle_post_message(scope, receive, send):
-            """安全处理POST消息的包装函数"""
-            self.logger.info("处理POST消息请求")
+            """Secure wrapper function for handling POST messages"""
+            self.logger.info("Processing POST message request")
             try:
-                # 调用原始处理函数
+                # Call original handler function
                 await sse.handle_post_message(scope, receive, send)
-                # 注意:原始函数已经发送了响应，但没有返回值
-                self.logger.info("POST消息处理完成")
+                # Note: original function has already sent response but has no return value
+                self.logger.info("POST message processing completed")
             except Exception as e:
-                self.logger.error(f"处理POST消息时出错: {e}", exc_info=True)
-                # 如果出错，尝试发送错误响应
+                self.logger.error(f"Error processing POST message: {e}", exc_info=True)
+                # If error occurs, try to send error response
                 try:
                     response = Response(f"Error: {str(e)}", status_code=500)
                     await response(scope, receive, send)
@@ -62,31 +62,31 @@ class CustomFastMCP(FastMCP):
                     pass
                 raise
 
-        # 创建Starlette应用
+        # Create Starlette application
         starlette_app = Starlette(
             debug=self.settings.debug,
             routes=[
                 Route("/sse", endpoint=handle_sse),
-                # 使用我们的安全包装函数代替原始函数
+                # Use our secure wrapper function instead of the original
                 Mount("/messages", app=safe_handle_post_message),
             ],
         )
         
-        # 增加中间件来捕获请求级别错误
+        # Add middleware to capture request-level errors
         @starlette_app.middleware("http")
         async def error_handling_middleware(request, call_next):
-            self.logger.info(f"开始处理请求: {request.url.path}")
+            self.logger.info(f"Starting request processing: {request.url.path}")
             try:
                 response = await call_next(request)
-                self.logger.info(f"请求处理完成: {request.url.path}, 状态码: {getattr(response, 'status_code', '未知')}")
+                self.logger.info(f"Request processing completed: {request.url.path}, status code: {getattr(response, 'status_code', 'unknown')}")
                 return response
             except Exception as e:
-                self.logger.error(f"请求处理异常: {str(e)}", exc_info=True)
+                self.logger.error(f"Request processing exception: {str(e)}", exc_info=True)
                 return Response(
-                    f"服务器内部错误: {str(e)}", status_code=500
+                    f"Internal server error: {str(e)}", status_code=500
                 )
 
-        # 启动服务器
+        # Start server
         config = uvicorn.Config(
             starlette_app,
             host=self.settings.host,
@@ -94,7 +94,7 @@ class CustomFastMCP(FastMCP):
             log_level=self.settings.log_level.lower(),
         )
         server = uvicorn.Server(config)
-        self.logger.info(f"开始启动服务器，监听 {self.settings.host}:{self.settings.port}")
+        self.logger.info(f"Starting server, listening on {self.settings.host}:{self.settings.port}")
         await server.serve()
 
 class OpenSearchMCPServer:
@@ -108,7 +108,7 @@ class OpenSearchMCPServer:
         )
         self.logger = logging.getLogger(self.name)
         
-        # 使用自定义FastMCP
+        # Use custom FastMCP
         self.mcp = CustomFastMCP(self.name, logger=self.logger)
         
         # Initialize OpenSearch client
