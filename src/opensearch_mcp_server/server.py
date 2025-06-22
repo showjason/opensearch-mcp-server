@@ -1,102 +1,27 @@
 #!/usr/bin/env python3
 import logging
 import argparse
+import asyncio
+from typing import Dict, Any, Optional
+from contextlib import asynccontextmanager
+
 from fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.routing import Route
+from starlette.requests import Request
+from starlette.responses import JSONResponse, StreamingResponse
+from mcp.server.streamable_http import StreamableHttpServerTransport
+import uvicorn
+
 from .tools.index import IndexTools
 from .tools.cluster import ClusterTools
 from .tools.document import DocumentTools
 from .opensearch_client import OpenSearchClient
 
-class CustomFastMCP(FastMCP):
-    """Custom FastMCP to fix SSE issues"""
-    
-    def __init__(self, name, logger=None, **kwargs):
-        super().__init__(name, **kwargs)
-        self.logger = logger or logging.getLogger(name)
-    
-    async def run_sse_async(self) -> None:
-        """Fixed SSE run method, directly rewrites the process of creating Starlette application"""
-        from starlette.applications import Starlette
-        from starlette.routing import Mount, Route
-        from starlette.responses import Response
-        from mcp.server.sse import SseServerTransport
-        import uvicorn
-
-        self.logger.info("Initializing SSE service using custom method")
-        sse = SseServerTransport("/messages/")
-
-        # Create SSE handler function
-        async def handle_sse(request):
-            self.logger.info(f"Received SSE connection request: {request}")
-            try:
-                async with sse.connect_sse(
-                    request.scope, request.receive, request._send
-                ) as streams:
-                    self.logger.info("SSE connection established")
-                    await self._mcp_server.run(
-                        streams[0],
-                        streams[1],
-                        self._mcp_server.create_initialization_options(),
-                    )
-            except Exception as e:
-                self.logger.error(f"SSE handling error: {e}", exc_info=True)
-                raise
-
-        # Create secure POST message handler function
-        async def safe_handle_post_message(scope, receive, send):
-            """Secure wrapper function for handling POST messages"""
-            self.logger.info("Processing POST message request")
-            try:
-                # Call original handler function
-                await sse.handle_post_message(scope, receive, send)
-                # Note: original function has already sent response but has no return value
-                self.logger.info("POST message processing completed")
-            except Exception as e:
-                self.logger.error(f"Error processing POST message: {e}", exc_info=True)
-                # If error occurs, try to send error response
-                try:
-                    response = Response(f"Error: {str(e)}", status_code=500)
-                    await response(scope, receive, send)
-                except Exception:
-                    pass
-                raise
-
-        # Create Starlette application
-        starlette_app = Starlette(
-            debug=self.settings.debug,
-            routes=[
-                Route("/sse", endpoint=handle_sse),
-                # Use our secure wrapper function instead of the original
-                Mount("/messages", app=safe_handle_post_message),
-            ],
-        )
-        
-        # Add middleware to capture request-level errors
-        @starlette_app.middleware("http")
-        async def error_handling_middleware(request, call_next):
-            self.logger.info(f"Starting request processing: {request.url.path}")
-            try:
-                response = await call_next(request)
-                self.logger.info(f"Request processing completed: {request.url.path}, status code: {getattr(response, 'status_code', 'unknown')}")
-                return response
-            except Exception as e:
-                self.logger.error(f"Request processing exception: {str(e)}", exc_info=True)
-                return Response(
-                    f"Internal server error: {str(e)}", status_code=500
-                )
-
-        # Start server
-        config = uvicorn.Config(
-            starlette_app,
-            host=self.settings.host,
-            port=self.settings.port,
-            log_level=self.settings.log_level.lower(),
-        )
-        server = uvicorn.Server(config)
-        self.logger.info(f"Starting server, listening on {self.settings.host}:{self.settings.port}")
-        await server.serve()
 
 class OpenSearchMCPServer:
+    """OpenSearch MCP Server with Streamable HTTP transport"""
+    
     def __init__(self):
         self.name = "opensearch_mcp_server"
         
@@ -107,15 +32,22 @@ class OpenSearchMCPServer:
         )
         self.logger = logging.getLogger(self.name)
         
-        # Use custom FastMCP
-        self.mcp = CustomFastMCP(self.name, logger=self.logger)
+        # Create FastMCP instance
+        self.mcp = FastMCP(self.name)
         
         # Initialize OpenSearch client
         self.os_client = OpenSearchClient(self.logger).os_client
         
         # Initialize tools
         self._register_tools()
+        
+        # Create Streamable HTTP transport
+        self.transport = StreamableHttpServerTransport()
+        
+        # Session management
+        self.sessions: Dict[str, Any] = {}
 
+    
     def _register_tools(self):
         """Register all MCP tools."""
         # Initialize tool classes with shared OpenSearch client
@@ -128,24 +60,174 @@ class OpenSearchMCPServer:
         cluster_tools.register_tools(self.mcp)
         document_tools.register_tools(self.mcp)
         
-    def run(self, port=None):
-        """Run the MCP server with SSE transport.
-        
-        Args:
-            port: Optional port number, if specified it will override the default port
-        """
-        if port is not None:
-            self.mcp.settings.port = port
-            self.logger.info(f"OpenSearch MCP service will start on port {port}")
+        self.logger.info("All MCP tools registered successfully")
+    
+    async def handle_mcp_request(self, request: Request) -> JSONResponse | StreamingResponse:
+        """Handle MCP requests via Streamable HTTP"""
+        try:
+            # Get session ID from headers
+            session_id = request.headers.get("Mcp-Session-Id")
             
-        self.mcp.run(transport="sse")
+            if request.method == "POST":
+                # Handle JSON-RPC request
+                body = await request.json()
+                self.logger.info(f"Received MCP request: {body.get('method', 'unknown')}")
+                
+                # Process the request through MCP server
+                async with self.transport.connect_http(
+                    request.scope, 
+                    request.receive, 
+                    request._send
+                ) as streams:
+                    # Initialize session if needed
+                    if body.get("method") == "initialize" and not session_id:
+                        session_id = self._generate_session_id()
+                        self.sessions[session_id] = {}
+                        self.logger.info(f"Created new session: {session_id}")
+                    
+                    # Run MCP server
+                    await self.mcp._mcp_server.run(
+                        streams[0],
+                        streams[1],
+                        self.mcp._mcp_server.create_initialization_options(),
+                    )
+                
+                # Return appropriate response (handled by transport)
+                return JSONResponse({"status": "processed"})
+                
+            elif request.method == "GET":
+                # Optional: Support server-initiated SSE streams
+                return await self._handle_sse_stream(request, session_id)
+                
+            elif request.method == "DELETE":
+                # Handle session termination
+                if session_id and session_id in self.sessions:
+                    del self.sessions[session_id]
+                    self.logger.info(f"Terminated session: {session_id}")
+                    return JSONResponse({"status": "session_terminated"})
+                
+                return JSONResponse({"error": "Session not found"}, status_code=404)
+                
+        except Exception as e:
+            self.logger.error(f"Error handling MCP request: {e}", exc_info=True)
+            return JSONResponse(
+                {"error": f"Internal server error: {str(e)}"}, 
+                status_code=500
+            )
+    
+    async def _handle_sse_stream(self, request: Request, session_id: Optional[str]) -> StreamingResponse:
+        """Handle server-initiated SSE streams"""
+        async def event_generator():
+            try:
+                # Send initial connection event
+                yield f"data: {{'event': 'connected', 'session_id': '{session_id}'}}\n\n"
+                
+                # Keep connection alive and send periodic heartbeats
+                while True:
+                    await asyncio.sleep(30)  # 30 second heartbeat
+                    yield f"data: {{'event': 'heartbeat', 'timestamp': '{asyncio.get_event_loop().time()}'}}\n\n"
+                    
+            except asyncio.CancelledError:
+                self.logger.info("SSE stream cancelled")
+                yield f"data: {{'event': 'disconnected'}}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Mcp-Session-Id": session_id or "",
+            }
+        )
+    
+    def _generate_session_id(self) -> str:
+        """Generate a secure session ID"""
+        import secrets
+        return secrets.token_urlsafe(32)
+    
+    def create_app(self) -> Starlette:
+        """Create Starlette application with Streamable HTTP support"""
+        
+        async def health_check(request: Request) -> JSONResponse:
+            """Health check endpoint"""
+            return JSONResponse({
+                "status": "healthy",
+                "server": self.name,
+                "transport": "streamable-http"
+            })
+        
+        # Create Starlette application
+        app = Starlette(
+            debug=False,
+            routes=[
+                Route("/health", endpoint=health_check, methods=["GET"]),
+                Route("/mcp", endpoint=self.handle_mcp_request, methods=["POST", "GET", "DELETE"]),
+            ],
+        )
+        
+        # Add CORS middleware for web clients
+        @app.middleware("http")
+        async def cors_middleware(request: Request, call_next):
+            response = await call_next(request)
+            
+            # Add CORS headers
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Mcp-Session-Id, Last-Event-ID"
+            response.headers["Access-Control-Expose-Headers"] = "Mcp-Session-Id"
+            
+            return response
+        
+        # Add error handling middleware
+        @app.middleware("http")
+        async def error_handling_middleware(request: Request, call_next):
+            self.logger.info(f"Processing request: {request.method} {request.url.path}")
+            try:
+                response = await call_next(request)
+                self.logger.info(f"Request completed: {request.url.path}, status: {response.status_code}")
+                return response
+            except Exception as e:
+                self.logger.error(f"Request failed: {str(e)}", exc_info=True)
+                return JSONResponse(
+                    {"error": f"Internal server error: {str(e)}"}, 
+                    status_code=500
+                )
+        
+        return app
+    
+    def run(self, host: str = "127.0.0.1", port: int = 8000):
+        """Run the MCP server with Streamable HTTP transport"""
+        self.logger.info(f"Starting OpenSearch MCP Server with Streamable HTTP transport")
+        self.logger.info(f"Server will listen on {host}:{port}")
+        self.logger.info(f"MCP endpoint: http://{host}:{port}/mcp")
+        
+        # Create and run the application
+        app = self.create_app()
+        
+        config = uvicorn.Config(
+            app,
+            host=host,
+            port=port,
+            log_level="info",
+            access_log=True,
+        )
+        
+        server = uvicorn.Server(config)
+        asyncio.run(server.serve())
+
 
 def main():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='OpenSearch MCP Server')
-    parser.add_argument('--port', type=int, help='Service listening port (default: 8000)')
+    """Main entry point"""
+    parser = argparse.ArgumentParser(description='OpenSearch MCP Server with Streamable HTTP')
+    parser.add_argument('--host', default='127.0.0.1', help='Host to bind to (default: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=8000, help='Port to listen on (default: 8000)')
     args = parser.parse_args()
     
     # Create and run the server
     server = OpenSearchMCPServer()
-    server.run(port=args.port)
+    server.run(host=args.host, port=args.port)
+
+
+if __name__ == "__main__":
+    main()
