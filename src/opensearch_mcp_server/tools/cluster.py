@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any
-from mcp.types import TextContent
 
 class ClusterTools:
     def __init__(self, logger=None, os_client=None):
@@ -18,7 +17,7 @@ class ClusterTools:
         """Register cluster-related tools."""
         
         @mcp.tool(description="Get cluster health status")
-        async def get_cluster_health() -> list[TextContent]:
+        async def get_cluster_health() -> str:
             """
             Get health status of the OpenSearch cluster.
             Returns information about the number of nodes, shards, etc.
@@ -26,13 +25,13 @@ class ClusterTools:
             self.logger.info("Getting cluster health")
             try:
                 response = self.os_client.cluster.health()
-                return [TextContent(type="text", text=str(response))]
+                return str(response)
             except Exception as e:
                 self.logger.error(f"Error getting cluster health: {e}")
-                return [TextContent(type="text", text=f"Error getting cluster health: {str(e)}")]
+                return f"Error getting cluster health: {str(e)}"
 
         @mcp.tool(description="Get cluster statistics")
-        async def get_cluster_stats() -> list[TextContent]:
+        async def get_cluster_stats() -> str:
             """
             Get statistics from a cluster wide perspective. 
             The API returns basic index metrics (shard numbers, store size, memory usage) and information 
@@ -41,7 +40,7 @@ class ClusterTools:
             self.logger.info("Getting cluster stats")
             try:
                 response = self.os_client.cluster.stats()
-                return [TextContent(type="text", text=str(response))]
+                return str(response)
             except Exception as e:
                 self.logger.error(f"Error getting cluster stats: {e}")
-                return [TextContent(type="text", text=f"Error getting cluster stats: {str(e)}")]
+                return f"Error getting cluster stats: {str(e)}"
